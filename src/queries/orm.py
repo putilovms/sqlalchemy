@@ -1,4 +1,5 @@
 from sqlalchemy import Integer, and_, text, insert, select, func, cast
+from sqlalchemy.orm import aliased
 from database import sync_engine, async_engine, session_factory, Base
 from models import WorkersOrm, ResumesOrm, Workload, metadata_obj
 
@@ -82,7 +83,8 @@ class SyncORM:
             query = (
                 select(
                     ResumesOrm.workload,
-                    cast(func.avg(ResumesOrm.compensation), Integer).label('avg_compensation'),
+                    cast(func.avg(ResumesOrm.compensation),
+                         Integer).label('avg_compensation'),
                 ).select_from(
                     ResumesOrm
                 ).filter(
@@ -99,8 +101,101 @@ class SyncORM:
             # print(query.compile(compile_kwargs={"literal_binds": True}))
             result = session.execute(query)
             print(result.all())
-            
 
+    @staticmethod
+    def insert_additional_resumes():
+        with session_factory() as session:
+            workers = [
+                {"username": "Artem"},
+                {"username": "Roman"},
+                {"username": "Petr"},
+            ]
+            resumes = [
+                {
+                    "title": "Python порограммист",
+                    "compensation": 60000,
+                    "workload": "fulltime",
+                    "worker_id": 3
+                }, {
+                    "title": "Machine Learning Eggineer",
+                    "compensation": 70000,
+                    "workload": "parttime",
+                    "worker_id": 3
+                }, {
+                    "title": "Python Data Scientist",
+                    "compensation": 80000,
+                    "workload": "parttime",
+                    "worker_id": 4
+                }, {
+                    "title": "Python Analyst",
+                    "compensation": 90000,
+                    "workload": "fulltime",
+                    "worker_id": 4
+                }, {
+                    "title": "Python Junior Developer",
+                    "compensation": 100000,
+                    "workload": "fulltime",
+                    "worker_id": 5
+                },
+            ]
+            insert_workers = insert(WorkersOrm).values(workers)
+            insert_resumes = insert(ResumesOrm).values(resumes)
+            session.execute(insert_workers)
+            session.execute(insert_resumes)
+            session.commit()
+
+    @staticmethod
+    def join_cte_subquery_window_func(like_language: str = "Python"):
+        """
+        with helper2 as (
+            select 
+                *,
+                compensation-avg_workload_compensation as compensation_diff
+            from helper1
+            (select
+                w.id,
+                w.username,
+                r.compensation,
+                r.workload,
+                avg(r.compensation) over (partition by workload)::int as avg_workload_compensation
+            from resumes r
+            join workers w on r.worker_id = w.id) helper1
+        )
+
+        select * from helper2
+        order by compensation_diff desc
+        """
+        with session_factory() as session:
+            r = aliased(ResumesOrm)
+            w = aliased(WorkersOrm)
+            subq = select(
+                r,
+                w,
+                func.avg(r.compensation).over(partition_by=r.workload).cast(
+                    Integer).label("avg_workload_compensation")
+            ).join(
+                r,
+                r.worker_id == w.id
+            ).subquery(
+                "helper1"
+            )
+            cte = select(
+                subq.c.worker_id,
+                subq.c.username,
+                subq.c.compensation,
+                subq.c.workload,
+                subq.c.avg_workload_compensation,
+                (subq.c.compensation -
+                subq.c.avg_workload_compensation).label("compensation_diff")
+            ).subquery(
+                "helper2"
+            )
+            query = select(
+                cte
+            ).order_by(cte.c.compensation_diff.desc())
+            # print(query.compile(compile_kwargs={"literal_binds": True}))
+            result = session.execute(query)
+            print(result.all())
 
 class AsyncORM:
     pass
