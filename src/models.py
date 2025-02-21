@@ -1,7 +1,7 @@
 import datetime
 from typing import Optional, Annotated
 from sqlalchemy import Table, Column, Integer, String, MetaData, ForeignKey, func, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from database import Base, str_256
 import enum
 
@@ -14,13 +14,16 @@ updated_at = Annotated[datetime.datetime, mapped_column(
     onupdate=datetime.datetime.now,
 )]
 
+# деклоративный стиль
+
 
 class WorkersOrm(Base):
     __tablename__ = "workers"
 
-    # деклоративный стиль
     id: Mapped[intpk]
     username: Mapped[str]
+
+    resumes: Mapped[list["ResumesOrm"]] = relationship()
 
 
 class Workload(enum.Enum):
@@ -40,10 +43,14 @@ class ResumesOrm(Base):
     created_at: Mapped[created_at]
     updated_at: Mapped[updated_at]
 
+    worker: Mapped["WorkersOrm"] = relationship()
+
+
+# императивный стиль
 
 metadata_obj = MetaData()
 
-# императивный стиль
+
 workers_table = Table(
     "workers",
     metadata_obj,

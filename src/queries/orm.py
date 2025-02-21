@@ -1,5 +1,5 @@
 from sqlalchemy import Integer, and_, text, insert, select, func, cast
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import aliased, joinedload, selectinload
 from database import sync_engine, async_engine, session_factory, Base
 from models import WorkersOrm, ResumesOrm, Workload, metadata_obj
 
@@ -186,7 +186,7 @@ class SyncORM:
                 subq.c.workload,
                 subq.c.avg_workload_compensation,
                 (subq.c.compensation -
-                subq.c.avg_workload_compensation).label("compensation_diff")
+                 subq.c.avg_workload_compensation).label("compensation_diff")
             ).subquery(
                 "helper2"
             )
@@ -196,6 +196,52 @@ class SyncORM:
             # print(query.compile(compile_kwargs={"literal_binds": True}))
             result = session.execute(query)
             print(result.all())
+
+    @staticmethod
+    def select_workers_with_lazy_relationship():
+        with session_factory() as session:
+            # ленивый метод подгрузки
+            # тут проблема N+1
+            # Мы делаем первый запрос где получаем работника
+            # и потом N запросов для каждого работника,
+            # чтобы получить его резюме
+            query = select(WorkersOrm)
+            result_exec = session.execute(query)
+            result = result_exec.scalars().all()
+            worker_1_resumes = result[0].resumes
+            print(worker_1_resumes)
+            worker_2_resumes = result[1].resumes
+            print(worker_2_resumes)
+
+    @staticmethod
+    def select_workers_with_joined_relationship():
+        with session_factory() as session:
+            query = select(
+                WorkersOrm
+            ).options(
+                joinedload(WorkersOrm.resumes)
+            )
+            result_exec = session.execute(query)
+            result = result_exec.unique().scalars().all()
+            worker_1_resumes = result[0].resumes
+            print(worker_1_resumes)
+            worker_2_resumes = result[1].resumes
+            print(worker_2_resumes)
+
+    @staticmethod
+    def select_workers_with_selectin_relationship():
+        with session_factory() as session:
+            query = select(
+                WorkersOrm
+            ).options(
+                selectinload(WorkersOrm.resumes)
+            )
+            result_exec = session.execute(query)
+            result = result_exec.unique().scalars().all()
+            worker_1_resumes = result[0].resumes
+            print(worker_1_resumes)
+            worker_2_resumes = result[1].resumes
+            print(worker_2_resumes)
 
 class AsyncORM:
     pass
