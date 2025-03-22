@@ -57,13 +57,46 @@ class ResumesOrm(Base):
         back_populates="resumes",
     )
 
+    vacancies_replied: Mapped[list["VacanciesOrm"]] = relationship(
+        back_populates="resumes_replied",
+        secondary="vacancies_replies",
+    )
+
     __table_args__ = (
         Index("title_index", "title"),
-        CheckConstraint("compensation > 0", name="constraint_compensation_positive")
+        CheckConstraint("compensation > 0",
+                        name="constraint_compensation_positive")
     )
 
 
+class VacanciesOrm(Base):
+    __tablename__ = "vacancies"
+
+    id: Mapped[intpk]
+    title: Mapped[str_256]
+    compensation: Mapped[int | None]
+
+    resumes_replied: Mapped[list["ResumesOrm"]] = relationship(
+        back_populates="vacancies_replied",
+        secondary="vacancies_replies",
+    )
+
+
+class VacanciesRepliesOrm(Base):
+    __tablename__ = "vacancies_replies"
+
+    resume_id: Mapped[int] = mapped_column(
+        ForeignKey("resumes.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    vacancy_id: Mapped[int] = mapped_column(
+        ForeignKey("vacancies.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    cover_latter: Mapped[str | None]
+
 # императивный стиль
+
 
 metadata_obj = MetaData()
 

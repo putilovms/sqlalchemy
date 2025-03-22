@@ -1,7 +1,7 @@
 from sqlalchemy import Integer, and_, text, insert, select, func, cast
 from sqlalchemy.orm import aliased, joinedload, selectinload, contains_eager
 from database import sync_engine, async_engine, session_factory, Base
-from models import WorkersOrm, ResumesOrm, Workload, metadata_obj
+from models import VacanciesOrm, WorkersOrm, ResumesOrm, Workload, metadata_obj
 from schemas import ResumesDTO, ResumesRelDTO, WorkersDTO, WorkersRelDTO
 
 
@@ -261,7 +261,6 @@ class SyncORM:
             result_exec = session.execute(query)
             result = result_exec.unique().scalars().all()
             print(result)
-            
 
     @staticmethod
     def select_workers_relationship_contains_eager():
@@ -299,6 +298,31 @@ class SyncORM:
                 contains_eager(WorkersOrm.resumes)
             )
 
+            result_exec = session.execute(query)
+            result = result_exec.unique().scalars().all()
+            print(result)
+
+    @staticmethod
+    def add_vacancies_and_replies():
+        with session_factory() as session:
+            new_vacancy = VacanciesOrm(
+                title="Python разработчик", compensation=100000)
+            resume_1 = session.get(ResumesOrm, 1)
+            resume_2 = session.get(ResumesOrm, 2)
+            resume_1.vacancies_replied.append(new_vacancy)
+            resume_2.vacancies_replied.append(new_vacancy)
+            session.commit()
+
+    @staticmethod
+    def select_resumes_with_all_relationships():
+        with session_factory() as session:
+            query = select(
+                ResumesOrm
+            ).options(
+                joinedload(ResumesOrm.worker)
+            ).options(
+                selectinload(ResumesOrm.vacancies_replied)
+            )
             result_exec = session.execute(query)
             result = result_exec.unique().scalars().all()
             print(result)
