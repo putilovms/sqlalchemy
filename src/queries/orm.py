@@ -2,6 +2,7 @@ from sqlalchemy import Integer, and_, text, insert, select, func, cast
 from sqlalchemy.orm import aliased, joinedload, selectinload, contains_eager
 from database import sync_engine, async_engine, session_factory, Base
 from models import WorkersOrm, ResumesOrm, Workload, metadata_obj
+from schemas import ResumesDTO, ResumesRelDTO, WorkersDTO, WorkersRelDTO
 
 
 class SyncORM:
@@ -242,6 +243,12 @@ class SyncORM:
             print(worker_1_resumes)
             worker_2_resumes = result[1].resumes
             print(worker_2_resumes)
+            result_dto = [WorkersDTO.model_validate(
+                row, from_attributes=True) for row in result]
+            print(result_dto)
+            result_rel_dto = [WorkersRelDTO.model_validate(
+                row, from_attributes=True) for row in result]
+            print(result_rel_dto)
 
     @staticmethod
     def select_workers_with_condition_relationship():
@@ -254,6 +261,7 @@ class SyncORM:
             result_exec = session.execute(query)
             result = result_exec.unique().scalars().all()
             print(result)
+            
 
     @staticmethod
     def select_workers_relationship_contains_eager():
@@ -290,7 +298,6 @@ class SyncORM:
             ).options(
                 contains_eager(WorkersOrm.resumes)
             )
-            
 
             result_exec = session.execute(query)
             result = result_exec.unique().scalars().all()
