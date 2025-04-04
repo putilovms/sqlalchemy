@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "alembic>=1.14.1",
     "asyncpg>=0.30.0",
+    "black>=25.1.0",
     "fastapi>=0.115.8",
     "psycopg>=3.2.4",
     "psycopg-binary>=3.2.4",
